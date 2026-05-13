@@ -1,5 +1,5 @@
 {
-  "name": "SyncSubs — Realtime SRT Tracker",
+  "name": "SyncSubs: Realtime SRT Tracker",
   "short_name": "SyncSubs",
   "description": "A professional, zero-dependency subtitle tracker with real-time SRT playback and synchronization controls.",
   "start_url": ".",
