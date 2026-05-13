@@ -1,0 +1,20 @@
+{
+  "name": "SyncSubs — Realtime SRT Tracker",
+  "short_name": "SyncSubs",
+  "description": "A professional, zero-dependency subtitle tracker with real-time SRT playback and synchronization controls.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#07070e",
+  "theme_color": "#07070e",
+  "categories": ["utilities", "entertainment"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

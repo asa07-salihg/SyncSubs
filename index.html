@@ -1,395 +1,786 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en" dir="ltr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>SRT Takip Ekranı – Android Pro</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>SyncSubs — Realtime SRT Tracker</title>
+  <meta name="description" content="Professional browser-based subtitle tracker. Load any SRT/VTT file, play it in real-time, and fine-tune synchronization with millisecond precision.">
+  <meta name="keywords" content="srt, vtt, webvtt, subtitle, tracker, player, synchronization, offset, realtime, browser, pwa">
+  <meta name="author" content="Salih">
+  <meta name="robots" content="index, follow">
+  <meta name="color-scheme" content="dark light">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="SyncSubs — Realtime SRT Tracker">
+  <meta property="og:description" content="A zero-dependency, browser-based subtitle tracker with real-time playback and millisecond-precision synchronization.">
+  <meta property="og:image" content="https://via.placeholder.com/1200x630/07070e/10b981?text=SyncSubs">
+  <meta property="og:site_name" content="SyncSubs">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="SyncSubs — Realtime SRT Tracker">
+  <meta name="twitter:description" content="A zero-dependency, browser-based subtitle tracker with real-time playback and millisecond-precision synchronization.">
+  <meta name="twitter:image" content="https://via.placeholder.com/1200x630/07070e/10b981?text=SyncSubs">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#07070e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SyncSubs">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.svg">
 <style>
-:root{
-  --bg: #000;
-  --fg: #fff;
-  --accent: #4ade80;
-  --panel-h: 48px;
+:root {
+  --bg:#07070e;--surface:rgba(255,255,255,.035);--border:rgba(255,255,255,.06);
+  --hover:rgba(255,255,255,.08);--active:rgba(255,255,255,.12);
+  --text:#e2e8f0;--text-dim:rgba(226,232,240,.4);
+  --accent:#10b981;--accent-bright:#34d399;--accent-glow:rgba(16,185,129,.22);
+  --red:#ef4444;--yellow:#eab308;--blue:#3b82f6;
+  --radius:10px;--panel-h:52px;--ease:cubic-bezier(.4,0,.2,1);
 }
-* { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; }
-body {
-  background: var(--bg);
-  color: var(--fg);
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji";
-  display: flex;
-  flex-direction: column;
-  padding-bottom: calc(var(--panel-h) + env(safe-area-inset-bottom, 0px)); /* panel görünürken metin panelin altına girmesin */
-  transition: padding-bottom .15s ease;
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%}
+body{
+  height:100%;height:100dvh;
+  background:var(--bg);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 18% 40%,rgba(16,185,129,.045) 0%,transparent 100%),
+    radial-gradient(ellipse 60% 50% at 82% 55%,rgba(59,130,246,.03) 0%,transparent 100%),
+    radial-gradient(ellipse 50% 40% at 50% 95%,rgba(139,92,246,.025) 0%,transparent 100%);
+  color:var(--text);
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  display:flex;flex-direction:column;overflow:hidden;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+  padding-bottom:calc(var(--panel-h) + env(safe-area-inset-bottom,0px));
+  transition:padding-bottom .3s var(--ease),background .3s ease,color .3s ease;
 }
-/* Üst kontrol çubuğu – sade ve kompakt */
-.toolbar {
-  display: flex;
-  gap: .25rem;
-  align-items: center;
-  padding: .4rem .5rem;
-  background: rgba(255,255,255,0.06);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  backdrop-filter: blur(6px);
+body.panel-hidden{padding-bottom:0}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+.toolbar{display:flex;align-items:center;gap:.375rem;padding:.5rem .75rem;background:var(--surface);border-bottom:1px solid var(--border);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);flex-shrink:0;z-index:10}
+.toolbar-sep{width:1px;height:20px;background:var(--border);margin:0 .125rem}
+.spacer{flex:1 1 auto}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:var(--radius);cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:background .2s ease,border-color .2s ease,box-shadow .2s ease,transform .1s ease;outline:none;font-family:inherit}
+.btn:hover{background:var(--hover);border-color:rgba(255,255,255,.1)}
+.btn:active{transform:scale(.94);background:var(--active)}
+.btn:focus-visible{box-shadow:0 0 0 2px var(--accent),0 0 0 5px var(--accent-glow)}
+.btn-icon{width:34px;height:34px;padding:0}
+.btn-icon svg{width:16px;height:16px;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.btn-icon svg polygon{fill:currentColor;stroke:none}
+
+.font-ctrl{display:flex;align-items:center;gap:.375rem}
+.font-label{font-size:.6875rem;color:var(--text-dim);min-width:24px;text-align:right;font-variant-numeric:tabular-nums}
+input[type="range"]{-webkit-appearance:none;appearance:none;width:80px;height:4px;background:rgba(255,255,255,.12);border-radius:2px;outline:none;cursor:pointer}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent-glow);border:none}
+input[type="range"]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent-glow);border:none}
+
+.stage{flex:1 1 0;display:flex;align-items:center;justify-content:center;padding:1.5rem;min-height:0;overflow:hidden}
+.sub-stack{display:flex;flex-direction:column;align-items:center;gap:.6rem;max-width:min(84ch,94vw)}
+.subtitle{text-align:center;font-size:clamp(18px,5.5vw,48px);line-height:1.32;text-shadow:0 2px 6px rgba(0,0,0,.8),0 0 24px rgba(0,0,0,.35);word-wrap:break-word;overflow-wrap:break-word;transition:opacity .15s ease}
+.subtitle i,.subtitle em{font-style:italic} .subtitle b,.subtitle strong{font-weight:700} .subtitle u{text-decoration:underline}
+.subtitle.empty{opacity:0}
+.subtitle.placeholder{color:var(--text-dim);font-size:clamp(14px,3vw,20px);text-shadow:none;animation:breathe 4s ease-in-out infinite}
+.subtitle.cue-enter{animation:cueIn .22s ease-out}
+.subtitle-alt{font-size:clamp(14px,3.8vw,32px);color:var(--accent-bright);opacity:.75;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.subtitle-alt.empty{opacity:0}
+.subtitle-alt.cue-enter{animation:cueIn .22s ease-out}
+
+.timeline{height:3px;background:rgba(255,255,255,.06);cursor:pointer;flex-shrink:0;position:relative;z-index:2;transition:height .15s ease}
+.timeline::before{content:'';position:absolute;inset:-10px 0}
+.timeline:hover,.timeline.dragging{height:7px}
+.timeline-fill{height:100%;background:linear-gradient(90deg,var(--accent),#06b6d4);border-radius:0 2px 2px 0;will-change:width;position:relative}
+.timeline-fill::after{content:'';position:absolute;right:-5px;top:50%;transform:translateY(-50%);width:11px;height:11px;border-radius:50%;background:var(--accent-bright);box-shadow:0 0 10px var(--accent-glow);opacity:0;transition:opacity .15s ease}
+.timeline:hover .timeline-fill::after,.timeline.dragging .timeline-fill::after{opacity:1}
+
+.status-bar{display:flex;align-items:center;gap:.5rem;padding:.35rem .75rem;flex-wrap:wrap;flex-shrink:0}
+.status-pill{font-size:.6875rem;color:var(--text-dim);padding:.2rem .5rem;border:1px solid var(--border);border-radius:999px;white-space:nowrap;font-variant-numeric:tabular-nums}
+
+.offset-panel{position:fixed;left:0;right:0;bottom:0;height:calc(var(--panel-h) + env(safe-area-inset-bottom,0px));padding:0 52px calc(env(safe-area-inset-bottom,0px)) 0;display:flex;align-items:center;justify-content:center;gap:.25rem;background:rgba(12,12,22,.92);border-top:1px solid rgba(255,255,255,.09);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);z-index:20;overflow-x:auto;-webkit-overflow-scrolling:touch;transition:transform .3s var(--ease),opacity .3s ease}
+.offset-panel.hidden{transform:translateY(100%);opacity:0;pointer-events:none}
+.offset-group{display:flex;gap:.25rem}
+.offset-sep{width:1px;height:22px;background:var(--border);margin:0 .25rem;flex-shrink:0}
+.offset-btn{min-width:48px;height:34px;font-size:.6875rem;font-weight:500;padding:0 .4rem;border-radius:var(--radius);letter-spacing:.02em;background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1)}
+
+.fab{position:fixed;right:8px;bottom:calc(var(--panel-h) + env(safe-area-inset-bottom,0px) + 46px);width:42px;height:42px;border-radius:999px;background:rgba(16,185,129,.14);border:1px solid rgba(16,185,129,.32);box-shadow:0 4px 18px rgba(0,0,0,.4);z-index:30;transition:bottom .3s var(--ease),transform .2s ease,box-shadow .2s ease}
+.fab:hover{transform:scale(1.08);box-shadow:0 6px 24px rgba(0,0,0,.5),0 0 18px var(--accent-glow)}
+.fab:active{transform:scale(.95)}
+.fab svg{width:18px;height:18px;stroke:var(--accent-bright);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none}
+body.panel-hidden .fab{bottom:calc(46px + env(safe-area-inset-bottom,0px))}
+
+.drop-overlay{position:fixed;inset:0;z-index:100;background:rgba(7,7,14,.92);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s ease}
+.drop-overlay.active{opacity:1;pointer-events:auto}
+.drop-content{text-align:center;padding:3rem 4rem;border:2px dashed var(--accent);border-radius:20px;background:rgba(16,185,129,.04);animation:dropPulse 2.5s ease-in-out infinite}
+.drop-content svg{width:48px;height:48px;stroke:var(--accent);stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round;margin-bottom:.75rem}
+.drop-content p{font-size:1.125rem;color:var(--text);margin-bottom:.35rem}
+.drop-content small{font-size:.8125rem;color:var(--text-dim)}
+
+.toast-rack{position:fixed;top:.75rem;right:.75rem;z-index:200;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
+.toast{display:flex;align-items:center;gap:.5rem;padding:.6rem .9rem;background:rgba(17,17,25,.92);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.45);backdrop-filter:blur(14px);pointer-events:auto;cursor:pointer;max-width:340px;animation:toastIn .3s ease-out}
+.toast.removing{animation:toastOut .25s ease-in forwards}
+.toast svg{width:16px;height:16px;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none;flex-shrink:0}
+.toast-success svg{stroke:var(--accent)} .toast-error svg{stroke:var(--red)} .toast-warning svg{stroke:var(--yellow)} .toast-info svg{stroke:var(--blue)}
+.toast p{margin:0;font-size:.8125rem;line-height:1.4}
+
+.search-wrap{display:flex;align-items:center;position:relative}
+.search-input{width:0;padding:0;border:none;background:transparent;color:var(--text);font-family:inherit;font-size:.8125rem;outline:none;opacity:0;transition:width .25s ease,opacity .2s ease,padding .25s ease}
+.search-wrap.open .search-input{width:130px;padding:0 .5rem;opacity:1;border-bottom:1px solid var(--accent)}
+.search-results{position:absolute;top:calc(100% + 6px);right:0;width:300px;max-height:200px;overflow-y:auto;background:rgba(12,12,22,.96);border:1px solid var(--border);border-radius:var(--radius);backdrop-filter:blur(14px);display:none;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.search-results.active{display:block}
+.search-item{padding:.4rem .6rem;cursor:pointer;font-size:.75rem;border-bottom:1px solid var(--border);display:flex;gap:.5rem;align-items:baseline;transition:background .15s ease}
+.search-item:last-child{border-bottom:none}
+.search-item:hover{background:var(--hover)}
+.search-time{color:var(--accent);font-variant-numeric:tabular-nums;flex-shrink:0;font-size:.6875rem}
+.search-text{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-text mark{background:rgba(16,185,129,.25);color:var(--accent-bright);border-radius:2px;padding:0 1px}
+
+.lang-wrap{position:relative}
+.lang-panel{position:absolute;top:calc(100% + 6px);right:0;width:180px;max-height:264px;overflow-y:auto;background:rgba(12,12,22,.96);border:1px solid var(--border);border-radius:var(--radius);backdrop-filter:blur(14px);z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.4);display:none;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.lang-panel.active{display:block}
+.lang-item{padding:.42rem .65rem;cursor:pointer;font-size:.8125rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.45rem;transition:background .15s ease;color:var(--text)}
+.lang-item:last-child{border-bottom:none}
+.lang-item:hover{background:var(--hover)}
+.lang-item.selected{color:var(--accent);font-weight:600}
+
+/* Light Theme */
+body.light-theme{
+  --bg:#f1f5f9;--surface:rgba(0,0,0,.035);--border:rgba(0,0,0,.09);
+  --hover:rgba(0,0,0,.05);--active:rgba(0,0,0,.09);
+  --text:#1e293b;--text-dim:rgba(30,41,59,.45);
+  --accent:#059669;--accent-bright:#10b981;--accent-glow:rgba(5,150,105,.2);
+  background:#f1f5f9;
+  background-image:radial-gradient(ellipse 80% 50% at 18% 40%,rgba(16,185,129,.06) 0%,transparent 100%),radial-gradient(ellipse 60% 50% at 82% 55%,rgba(59,130,246,.04) 0%,transparent 100%);
 }
-.btn{ 
-  display: inline-flex; 
-  align-items: center; 
-  justify-content: center; 
-  border: 1px solid rgba(255,255,255,0.18);
-  background: rgba(255,255,255,0.08);
-  color: var(--fg); 
-  border-radius: .6rem; 
-  cursor: pointer; 
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform .08s ease, opacity .15s ease; 
+body.light-theme .subtitle{text-shadow:0 1px 3px rgba(0,0,0,.08)}
+body.light-theme .offset-panel{background:rgba(241,245,249,.94)}
+body.light-theme .toast{background:rgba(241,245,249,.95)}
+body.light-theme .search-results{background:rgba(241,245,249,.96)}
+body.light-theme .lang-panel{background:rgba(241,245,249,.96)}
+body.light-theme .drop-overlay{background:rgba(241,245,249,.92)}
+body.light-theme .offset-btn{background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.1)}
+body.light-theme input[type="range"]{background:rgba(0,0,0,.1)}
+
+@keyframes breathe{0%,100%{opacity:.4}50%{opacity:.72}}
+@keyframes cueIn{from{opacity:.45;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translateX(100%)}to{opacity:1;transform:translateX(0)}}
+@keyframes toastOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(100%)}}
+@keyframes dropPulse{0%,100%{border-color:var(--accent)}50%{border-color:var(--accent-bright)}}
+
+@media(max-width:640px){
+  .toolbar{gap:.25rem;padding:.4rem .5rem}
+  .btn-icon{width:30px;height:30px} .btn-icon svg{width:14px;height:14px}
+  .font-label{display:none} input[type="range"]{width:56px}
+  .offset-btn{min-width:42px;height:30px;font-size:.625rem}
+  .offset-panel{gap:.125rem;padding-right:48px;padding-left:.25rem}
+  .offset-sep{margin:0 .125rem}
+  .drop-content{padding:2rem}
+  .search-wrap.open .search-input{width:80px}
+  .hide-sm{display:none}
 }
-.btn:active{ transform: scale(0.95); }
-.btn-xs{ width: 28px; height: 28px; font-size: 12px; padding: 0; }
-.toolbar input[type="file"]{
-  display: inline-block;
-  width: 28px; height: 28px;
-  overflow: hidden;
-  border-radius: .6rem;
-  border: 1px solid rgba(255,255,255,0.18);
-  background: rgba(255,255,255,0.08);
-  cursor: pointer;
-}
-.toolbar input[type="file"]::-webkit-file-upload-button{ visibility: hidden; }
-.toolbar input[type="file"]::before{
-  content: "📄";
-  display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 100%;
-  font-size: 14px; color: var(--fg);
-}
-.spacer { flex: 1 1 auto; }
-/* Oynatma alanı */
-.stage {
-  position: relative;
-  flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
-.subtitle {
-  max-width: min(90ch, 92vw);
-  text-align: center;
-  font-size: clamp(18px, 5.5vw, 42px);
-  line-height: 1.28;
-  text-shadow: 0 2px 2px rgba(0,0,0,.8), 0 0 10px rgba(0,0,0,.55);
-}
-.muted { opacity: .6; }
-/* Durum satırı */
-.status {
-  padding: .25rem .5rem .6rem;
-  color: rgba(255,255,255,.7);
-  font-size: .8rem;
-  display: flex;
-  align-items: center;
-  gap: .4rem;
-  flex-wrap: wrap;
-}
-.pill {
-  border: 1px dashed rgba(255,255,255,.2);
-  padding: .15rem .35rem;
-  border-radius: 999px;
-}
-/* Alt panel (sabit) */
-.bottom-panel {
-  position: fixed;
-  left: 0; right: 0;
-  bottom: 0;
-  height: var(--panel-h);
-  padding: 6px 60px 6px 6px; /* sağda toggle için boşluk */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  background: rgba(20,20,20,0.75);
-  border-top: 1px solid rgba(255,255,255,0.12);
-  backdrop-filter: blur(8px);
-  z-index: 20;
-}
-.bottom-panel.hidden {
-  display: none;
-}
-.step-btn {
-  min-width: 56px;
-  height: 36px;
-  font-size: 12px;
-  padding: 0 .5rem;
-  border-radius: .6rem;
-}
-/* Sağ alt köşe – aç/kapat butonu (floating) */
-.fab {
-  position: fixed;
-  right: 10px;
-  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-  width: 44px; height: 44px;
-  border-radius: 999px;
-  box-shadow: 0 6px 18px rgba(0,0,0,.35);
-  z-index: 30;
-  font-size: 18px;
-}
-@media (max-width: 820px){
-  .toolbar{ gap: .25rem; padding: .35rem .45rem; }
-  .btn-xs{ width: 26px; height: 26px; font-size: 11px; }
-  .subtitle{ font-size: clamp(16px, 5.2vw, 38px); }
-  .step-btn{ min-width: 52px; height: 34px; font-size: 11px; }
-}
+@media(max-width:380px){.offset-btn{min-width:36px;padding:0 .2rem;font-size:.6rem}}
+@media(hover:none){.timeline{height:5px}}
 </style>
 </head>
 <body>
-  <!-- Üst çubuk: sade -->
-  <div class="toolbar">
-    <input id="file" type="file" accept=".srt,.txt,text/plain" title="SRT Yükle" />
-    <button id="play" class="btn btn-xs" title="Başlat (Space)">▶</button>
-    <button id="pause" class="btn btn-xs" title="Duraklat (Space)">❚❚</button>
-    <button id="reset" class="btn btn-xs" title="Sıfırla (R)">■</button>
+  <div id="dropZone" class="drop-overlay" aria-hidden="true">
+    <div class="drop-content">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <p id="dropText">Drop your subtitle file here</p>
+      <small id="dropFormats">Supports .srt, .vtt, and .txt formats</small>
+    </div>
+  </div>
+  <div id="toasts" class="toast-rack" role="log" aria-live="polite" aria-label="Notifications"></div>
+
+  <header class="toolbar" role="toolbar" aria-label="Controls">
+    <button id="fileBtn" class="btn btn-icon" aria-label="Load file" title="Load file">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+    </button>
+    <input id="fileInput" type="file" accept=".srt,.vtt,.txt,text/plain" class="sr-only" tabindex="-1" aria-hidden="true">
+    <button id="compareBtn" class="btn btn-icon hide-sm" aria-label="Load comparison file" title="Compare">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+    </button>
+    <input id="compareInput" type="file" accept=".srt,.vtt,.txt,text/plain" class="sr-only" tabindex="-1" aria-hidden="true">
+    <div class="toolbar-sep" aria-hidden="true"></div>
+    <button id="playPauseBtn" class="btn btn-icon" aria-label="Play" title="Play (Space)">
+      <svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21"/></svg>
+    </button>
+    <button id="resetBtn" class="btn btn-icon" aria-label="Reset" title="Reset (R)">
+      <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+    </button>
+    <button id="exportBtn" class="btn btn-icon hide-sm" aria-label="Export SRT" title="Export SRT">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </button>
     <div class="spacer"></div>
-    <input id="fontSize" type="range" min="16" max="72" value="36" title="Yazı Boyutu" style="height: 22px;" />
-    <button id="fs" class="btn btn-xs" title="Tam Ekran (F)">⤢</button>
+    <div class="search-wrap" id="searchWrap">
+      <button id="searchBtn" class="btn btn-icon" aria-label="Search" title="Search (/)">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+      <input id="searchInput" class="search-input" type="text" placeholder="Search..." aria-label="Search subtitles">
+      <div id="searchResults" class="search-results"></div>
+    </div>
+    <div class="toolbar-sep hide-sm" aria-hidden="true"></div>
+    <div class="lang-wrap" id="langWrap">
+      <button id="langBtn" class="btn btn-icon" aria-label="Select language" title="Language">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      </button>
+      <div id="langPanel" class="lang-panel" role="listbox" aria-label="Select language"></div>
+    </div>
+    <button id="themeBtn" class="btn btn-icon" aria-label="Toggle theme" title="Theme">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+    <div class="font-ctrl" role="group" aria-label="Font size">
+      <span id="fontLabel" class="font-label" aria-hidden="true">36</span>
+      <input id="fontRange" type="range" min="14" max="80" value="36" aria-label="Font size">
+    </div>
+    <button id="fullscreenBtn" class="btn btn-icon" aria-label="Fullscreen" title="Fullscreen (F)">
+      <svg viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
+    </button>
+  </header>
+
+  <main id="stage" class="stage">
+    <div class="sub-stack">
+      <div id="subtitle" class="subtitle placeholder" role="status" aria-live="polite" aria-atomic="true">
+        Drop a subtitle file or click the file button to begin
+      </div>
+      <div id="subtitle2" class="subtitle subtitle-alt empty" aria-live="polite"></div>
+    </div>
+  </main>
+
+  <div id="timeline" class="timeline" role="slider" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+    <div id="timelineFill" class="timeline-fill"></div>
   </div>
 
-  <div id="stage" class="stage">
-    <div id="subtitle" class="subtitle muted">Bir .srt dosyası yükleyin…</div>
+  <footer class="status-bar" role="status" aria-label="Status">
+    <span class="status-pill" id="fileInfo">No file loaded</span>
+    <span class="status-pill" id="timeDisplay">00:00.000</span>
+    <span class="status-pill" id="countDisplay">0 cues</span>
+    <span class="status-pill" id="offsetDisplay">Offset: 0ms</span>
+  </footer>
+
+  <div id="offsetPanel" class="offset-panel" role="toolbar" aria-label="Offset">
+    <div class="offset-group">
+      <button class="btn offset-btn" data-step="-10000" aria-label="-10s">&minus;10s</button>
+      <button class="btn offset-btn" data-step="-5000"  aria-label="-5s">&minus;5s</button>
+      <button class="btn offset-btn" data-step="-1000"  aria-label="-1s">&minus;1s</button>
+      <button class="btn offset-btn" data-step="-500"   aria-label="-.5s">&minus;.5</button>
+      <button class="btn offset-btn" data-step="-100"   aria-label="-.1s">&minus;.1</button>
+    </div>
+    <div class="offset-sep" aria-hidden="true"></div>
+    <div class="offset-group">
+      <button class="btn offset-btn" data-step="100"   aria-label="+.1s">+.1</button>
+      <button class="btn offset-btn" data-step="500"   aria-label="+.5s">+.5</button>
+      <button class="btn offset-btn" data-step="1000"  aria-label="+1s">+1s</button>
+      <button class="btn offset-btn" data-step="5000"  aria-label="+5s">+5s</button>
+      <button class="btn offset-btn" data-step="10000" aria-label="+10s">+10s</button>
+    </div>
   </div>
 
-  <div class="status">
-    <span class="pill" id="loadedInfo">Yüklenen dosya: —</span>
-    <span class="pill" id="timeInfo">00:00.000</span>
-    <span class="pill" id="countInfo">0 satır</span>
-    <span class="pill" id="offsetInfo">Ofset: 0 ms</span>
-  </div>
-
-  <!-- Alt ofset paneli -->
-  <div id="bottomPanel" class="bottom-panel">
-    <!-- Geri -->
-    <button class="btn step-btn" data-step="-10000">⏪10s</button>
-    <button class="btn step-btn" data-step="-5000">⏪5s</button>
-    <button class="btn step-btn" data-step="-1000">⏪1s</button>
-    <button class="btn step-btn" data-step="-500">⏪0.5s</button>
-    <button class="btn step-btn" data-step="-100">⏪0.1s</button>
-    <!-- İleri -->
-    <button class="btn step-btn" data-step="100">0.1s⏩</button>
-    <button class="btn step-btn" data-step="500">0.5s⏩</button>
-    <button class="btn step-btn" data-step="1000">1s⏩</button>
-    <button class="btn step-btn" data-step="5000">5s⏩</button>
-    <button class="btn step-btn" data-step="10000">10s⏩</button>
-  </div>
-
-  <!-- Sağ alt köşe gizle/göster -->
-  <button id="togglePanel" class="btn fab" title="Ofset panelini gizle/göster">⚙️</button>
+  <button id="fab" class="btn fab" aria-label="Toggle offset panel" aria-expanded="true" title="Offset panel">
+    <svg viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+  </button>
 
 <script>
-// --- SRT ayrıştırıcı ---
-function parseSRT(text) {
-  const blocks = text.replace(/\r/g, '').split(/\n\n+/);
-  const items = [];
-  for (const b of blocks) {
-    const lines = b.trim().split('\n');
-    if (lines.length >= 2) {
-      const timeLine = lines.length >= 2 && /-->/.test(lines[1]) ? lines[1] : lines[0];
-      const m = timeLine.match(/(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2}),(\d{3})/);
-      if (!m) continue;
-      const toMs = (h, m, s, ms) => ((+h)*3600000) + ((+m)*60000) + ((+s)*1000) + (+ms);
-      const start = toMs(m[1], m[2], m[3], m[4]);
-      const end   = toMs(m[5], m[6], m[7], m[8]);
-      let textStartIndex = /-->/.test(lines[1]) ? 2 : 1;
-      const content = lines.slice(textStartIndex).join('\n').trim();
-      items.push({ start, end, text: content });
-    }
-  }
-  items.sort((a,b) => a.start - b.start);
-  return items;
-}
+const Icons = {
+  play:     '<svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21"/></svg>',
+  pause:    '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>',
+  maximize: '<svg viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>',
+  minimize: '<svg viewBox="0 0 24 24"><path d="M4 14h6v6"/><path d="M20 10h-6V4"/><path d="M14 10l7-7"/><path d="M3 21l7-7"/></svg>',
+  check:    '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
+  error:    '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+  warning:  '<svg viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  info:     '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
+  sun:      '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>',
+  moon:     '<svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
+};
 
-// --- Yardımcılar ---
-const $ = (sel) => document.querySelector(sel);
-const subtitleEl = $('#subtitle');
-const timeInfo = $('#timeInfo');
-const loadedInfo = $('#loadedInfo');
-const countInfo = $('#countInfo');
-const offsetInfo = $('#offsetInfo');
-const bottomPanel = $('#bottomPanel');
-const togglePanelBtn = $('#togglePanel');
+// ── i18n ────────────────────────────────────────────────────────
 
-let subtitles = [];
-let playing = false;
-let startEpoch = 0;   // Date.now referansı
-let pausedAt = 0;     // ms cinsinden kaldığı yer
-let idx = 0;          // hız için mevcut index
-let rafId = null;
-let offsetMs = 0;     // kullanıcı ofseti
-
-function formatMs(ms){
-  const neg = ms < 0;
-  ms = Math.abs(ms);
-  const s = Math.floor(ms/1000);
-  const mm = String(Math.floor(s/60)).padStart(2,'0');
-  const ss = String(s%60).padStart(2,'0');
-  const mmm = String(ms%1000).padStart(3,'0');
-  return (neg?'-':'') + `${mm}:${ss}.${mmm}`;
-}
-
-function currentTimeMs(){
-  return playing ? (Date.now() - startEpoch + pausedAt) : pausedAt;
-}
-
-function renderSubtitle(t){
-  // t: geçen süre (ms)
-  timeInfo.textContent = formatMs(t + offsetMs);
-  if (subtitles.length === 0) return;
-
-  const curT = t + offsetMs;
-
-  // Mevcut pencereyi koru
-  while (idx > 0 && curT < subtitles[idx].start) idx--;
-  while (idx < subtitles.length-1 && curT >= subtitles[idx].end) idx++;
-
-  const cur = subtitles[idx];
-  if (curT >= cur.start && curT < cur.end) {
-    subtitleEl.classList.remove('muted');
-    subtitleEl.innerHTML = cur.text.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g,'<br/>');
-  } else {
-    subtitleEl.classList.add('muted');
-    subtitleEl.textContent = '';
-  }
-}
-
-function loop(){
-  if (!playing) return;
-  const t = Date.now() - startEpoch + pausedAt;
-  renderSubtitle(t);
-  rafId = requestAnimationFrame(loop);
-}
-
-function play(){
-  if (subtitles.length === 0) return;
-  if (playing) return;
-  startEpoch = Date.now();
-  playing = true;
-  loop();
-}
-function pause(){
-  if (!playing) return;
-  playing = false;
-  cancelAnimationFrame(rafId);
-  pausedAt += Date.now() - startEpoch;
-}
-function reset(){
-  playing = false;
-  cancelAnimationFrame(rafId);
-  startEpoch = 0;
-  pausedAt = 0;
-  idx = 0;
-  subtitleEl.classList.add('muted');
-  subtitleEl.textContent = '';
-  timeInfo.textContent = '00:00.000';
-}
-
-// --- Dosya yükleme (Android güvenli) ---
-document.getElementById('file').addEventListener('change', (e)=>{
-  const file = e.target.files?.[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onloadend = () => {
-    if (reader.result != null) {
-      subtitles = parseSRT(String(reader.result));
-      loadedInfo.textContent = `Yüklenen dosya: ${file.name}`;
-      countInfo.textContent = `${subtitles.length} satır`;
-      reset();
-      subtitleEl.textContent = 'Hazır. Başlat tuşuna basın.';
-    }
+class Lang {
+  static current = 'en';
+  static list = [
+    {code:'en',name:'English',flag:'\u{1F1EC}\u{1F1E7}'},
+    {code:'tr',name:'T\u00FCrk\u00E7e',flag:'\u{1F1F9}\u{1F1F7}'},
+    {code:'es',name:'Espa\u00F1ol',flag:'\u{1F1EA}\u{1F1F8}'},
+    {code:'fr',name:'Fran\u00E7ais',flag:'\u{1F1EB}\u{1F1F7}'},
+    {code:'de',name:'Deutsch',flag:'\u{1F1E9}\u{1F1EA}'},
+    {code:'it',name:'Italiano',flag:'\u{1F1EE}\u{1F1F9}'},
+    {code:'pt',name:'Portugu\u00EAs',flag:'\u{1F1E7}\u{1F1F7}'},
+    {code:'nl',name:'Nederlands',flag:'\u{1F1F3}\u{1F1F1}'},
+    {code:'sv',name:'Svenska',flag:'\u{1F1F8}\u{1F1EA}'},
+    {code:'pl',name:'Polski',flag:'\u{1F1F5}\u{1F1F1}'},
+    {code:'uk',name:'\u0423\u043A\u0440\u0430\u0457\u043D\u0441\u044C\u043A\u0430',flag:'\u{1F1FA}\u{1F1E6}'},
+    {code:'ru',name:'\u0420\u0443\u0441\u0441\u043A\u0438\u0439',flag:'\u{1F1F7}\u{1F1FA}'},
+    {code:'ar',name:'\u0627\u0644\u0639\u0631\u0628\u064A\u0629',flag:'\u{1F1F8}\u{1F1E6}'},
+    {code:'hi',name:'\u0939\u093F\u0928\u094D\u0926\u0940',flag:'\u{1F1EE}\u{1F1F3}'},
+    {code:'th',name:'\u0E44\u0E17\u0E22',flag:'\u{1F1F9}\u{1F1ED}'},
+    {code:'vi',name:'Ti\u1EBFng Vi\u1EC7t',flag:'\u{1F1FB}\u{1F1F3}'},
+    {code:'id',name:'Indonesia',flag:'\u{1F1EE}\u{1F1E9}'},
+    {code:'zh',name:'\u4E2D\u6587',flag:'\u{1F1E8}\u{1F1F3}'},
+    {code:'ja',name:'\u65E5\u672C\u8A9E',flag:'\u{1F1EF}\u{1F1F5}'},
+    {code:'ko',name:'\uD55C\uAD6D\uC5B4',flag:'\u{1F1F0}\u{1F1F7}'},
+  ];
+  static data = {
+    en:{dropHere:'Drop your subtitle file here',dropFmt:'Supports .srt, .vtt, and .txt formats',idle:'Drop a subtitle file or click the file button to begin',ready:'Ready \u2014 press play to start',noFile:'No file loaded',cues:'cues',offset:'Offset',loaded:'Loaded',from:'from',noValid:'No valid subtitle cues found.',readErr:'Failed to read file.',exported:'SRT exported with offset applied.',noSubs:'Load a subtitle file first.',compLoaded:'Comparison track loaded',resetMsg:'Reset to beginning'},
+    tr:{dropHere:'Altyaz\u0131 dosyan\u0131z\u0131 buraya b\u0131rak\u0131n',dropFmt:'.srt, .vtt ve .txt desteklenir',idle:'Bir dosya s\u00FCr\u00FCkleyin veya dosya butonuna t\u0131klay\u0131n',ready:'Haz\u0131r \u2014 ba\u015Flatmak i\u00E7in play tu\u015Funa bas\u0131n',noFile:'Dosya y\u00FCklenmedi',cues:'sat\u0131r',offset:'Ofset',loaded:'Y\u00FCklendi',from:'dosyas\u0131ndan',noValid:'Ge\u00E7erli altyaz\u0131 bulunamad\u0131.',readErr:'Dosya okunamad\u0131.',exported:'Ofset uygulanm\u0131\u015F SRT indirildi.',noSubs:'\u00D6nce bir altyaz\u0131 dosyas\u0131 y\u00FCkleyin.',compLoaded:'Kar\u015F\u0131la\u015Ft\u0131rma y\u00FCklendi',resetMsg:'Ba\u015Fa sar\u0131ld\u0131'},
+    es:{dropHere:'Suelta tu archivo de subt\u00EDtulos aqu\u00ED',dropFmt:'Soporta formatos .srt, .vtt y .txt',idle:'Suelta un archivo o haz clic en el bot\u00F3n de archivo',ready:'Listo \u2014 pulsa play para comenzar',noFile:'Sin archivo cargado',cues:'l\u00EDneas',offset:'Desfase',loaded:'Cargado',from:'de',noValid:'No se encontraron subt\u00EDtulos v\u00E1lidos.',readErr:'Error al leer el archivo.',exported:'SRT exportado con desfase aplicado.',noSubs:'Carga un archivo de subt\u00EDtulos primero.',compLoaded:'Pista de comparaci\u00F3n cargada',resetMsg:'Reiniciado al inicio'},
+    fr:{dropHere:'D\u00E9posez votre fichier de sous-titres ici',dropFmt:'Supporte les formats .srt, .vtt et .txt',idle:'D\u00E9posez un fichier ou cliquez sur le bouton fichier',ready:'Pr\u00EAt \u2014 appuyez sur lecture pour commencer',noFile:'Aucun fichier charg\u00E9',cues:'rep\u00E8res',offset:'D\u00E9calage',loaded:'Charg\u00E9',from:'depuis',noValid:'Aucun sous-titre valide trouv\u00E9.',readErr:'\u00C9chec de la lecture du fichier.',exported:'SRT export\u00E9 avec d\u00E9calage appliqu\u00E9.',noSubs:'Chargez d\u2019abord un fichier de sous-titres.',compLoaded:'Piste de comparaison charg\u00E9e',resetMsg:'R\u00E9initialis\u00E9 au d\u00E9but'},
+    de:{dropHere:'Untertiteldatei hier ablegen',dropFmt:'Unterst\u00FCtzt .srt, .vtt und .txt Formate',idle:'Datei hierher ziehen oder Datei-Button klicken',ready:'Bereit \u2014 zum Starten Play dr\u00FCcken',noFile:'Keine Datei geladen',cues:'Zeilen',offset:'Versatz',loaded:'Geladen',from:'aus',noValid:'Keine g\u00FCltigen Untertitel gefunden.',readErr:'Datei konnte nicht gelesen werden.',exported:'SRT mit angewandtem Versatz exportiert.',noSubs:'Laden Sie zuerst eine Untertiteldatei.',compLoaded:'Vergleichsspur geladen',resetMsg:'Auf Anfang zur\u00FCckgesetzt'},
+    it:{dropHere:'Trascina qui il file dei sottotitoli',dropFmt:'Supporta formati .srt, .vtt e .txt',idle:'Trascina un file o clicca il pulsante file',ready:'Pronto \u2014 premi play per iniziare',noFile:'Nessun file caricato',cues:'battute',offset:'Offset',loaded:'Caricato',from:'da',noValid:'Nessun sottotitolo valido trovato.',readErr:'Impossibile leggere il file.',exported:'SRT esportato con offset applicato.',noSubs:'Carica prima un file di sottotitoli.',compLoaded:'Traccia di confronto caricata',resetMsg:'Riportato all\u2019inizio'},
+    pt:{dropHere:'Solte seu arquivo de legendas aqui',dropFmt:'Suporta formatos .srt, .vtt e .txt',idle:'Solte um arquivo ou clique no bot\u00E3o de arquivo',ready:'Pronto \u2014 pressione play para come\u00E7ar',noFile:'Nenhum arquivo carregado',cues:'legendas',offset:'Deslocamento',loaded:'Carregado',from:'de',noValid:'Nenhuma legenda v\u00E1lida encontrada.',readErr:'Falha ao ler o arquivo.',exported:'SRT exportado com deslocamento aplicado.',noSubs:'Carregue um arquivo de legendas primeiro.',compLoaded:'Faixa de compara\u00E7\u00E3o carregada',resetMsg:'Reiniciado para o in\u00EDcio'},
+    nl:{dropHere:'Sleep je ondertitelbestand hierheen',dropFmt:'Ondersteunt .srt, .vtt en .txt formaten',idle:'Sleep een bestand of klik op de bestandsknop',ready:'Klaar \u2014 druk op play om te starten',noFile:'Geen bestand geladen',cues:'regels',offset:'Offset',loaded:'Geladen',from:'van',noValid:'Geen geldige ondertitels gevonden.',readErr:'Kan bestand niet lezen.',exported:'SRT ge\u00EBxporteerd met offset toegepast.',noSubs:'Laad eerst een ondertitelbestand.',compLoaded:'Vergelijkingstrack geladen',resetMsg:'Teruggezet naar begin'},
+    sv:{dropHere:'Sl\u00E4pp din undertextfil h\u00E4r',dropFmt:'St\u00F6der .srt, .vtt och .txt format',idle:'Sl\u00E4pp en fil eller klicka p\u00E5 filknappen',ready:'Klar \u2014 tryck play f\u00F6r att b\u00F6rja',noFile:'Ingen fil laddad',cues:'rader',offset:'Offset',loaded:'Laddad',from:'fr\u00E5n',noValid:'Inga giltiga undertexter hittades.',readErr:'Kunde inte l\u00E4sa filen.',exported:'SRT exporterad med offset till\u00E4mpad.',noSubs:'Ladda en undertextfil f\u00F6rst.',compLoaded:'J\u00E4mf\u00F6relsesp\u00E5r laddad',resetMsg:'\u00C5terst\u00E4lld till b\u00F6rjan'},
+    pl:{dropHere:'Upu\u015B\u0107 plik napis\u00F3w tutaj',dropFmt:'Obs\u0142uguje formaty .srt, .vtt i .txt',idle:'Upu\u015B\u0107 plik lub kliknij przycisk pliku',ready:'Gotowe \u2014 naci\u015Bnij play aby rozpocz\u0105\u0107',noFile:'Brak za\u0142adowanego pliku',cues:'linii',offset:'Przesuni\u0119cie',loaded:'Za\u0142adowano',from:'z',noValid:'Nie znaleziono prawid\u0142owych napis\u00F3w.',readErr:'Nie uda\u0142o si\u0119 odczyta\u0107 pliku.',exported:'SRT wyeksportowano z zastosowanym przesuni\u0119ciem.',noSubs:'Najpierw za\u0142aduj plik napis\u00F3w.',compLoaded:'\u015Acie\u017Cka por\u00F3wnawcza za\u0142adowana',resetMsg:'Zresetowano do pocz\u0105tku'},
+    uk:{dropHere:'\u041F\u0435\u0440\u0435\u0442\u044F\u0433\u043D\u0456\u0442\u044C \u0444\u0430\u0439\u043B \u0441\u0443\u0431\u0442\u0438\u0442\u0440\u0456\u0432 \u0441\u044E\u0434\u0438',dropFmt:'\u041F\u0456\u0434\u0442\u0440\u0438\u043C\u0443\u0454 \u0444\u043E\u0440\u043C\u0430\u0442\u0438 .srt, .vtt \u0442\u0430 .txt',idle:'\u041F\u0435\u0440\u0435\u0442\u044F\u0433\u043D\u0456\u0442\u044C \u0444\u0430\u0439\u043B \u0430\u0431\u043E \u043D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \u043A\u043D\u043E\u043F\u043A\u0443 \u0444\u0430\u0439\u043B\u0443',ready:'\u0413\u043E\u0442\u043E\u0432\u043E \u2014 \u043D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C play \u0434\u043B\u044F \u043F\u043E\u0447\u0430\u0442\u043A\u0443',noFile:'\u0424\u0430\u0439\u043B \u043D\u0435 \u0437\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043E',cues:'\u0440\u044F\u0434\u043A\u0456\u0432',offset:'\u0417\u043C\u0456\u0449\u0435\u043D\u043D\u044F',loaded:'\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043E',from:'\u0437',noValid:'\u041D\u0435 \u0437\u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0434\u0456\u0439\u0441\u043D\u0438\u0445 \u0441\u0443\u0431\u0442\u0438\u0442\u0440\u0456\u0432.',readErr:'\u041D\u0435 \u0432\u0434\u0430\u043B\u043E\u0441\u044F \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u0442\u0438 \u0444\u0430\u0439\u043B.',exported:'SRT \u0435\u043A\u0441\u043F\u043E\u0440\u0442\u043E\u0432\u0430\u043D\u043E \u0437\u0456 \u0437\u043C\u0456\u0449\u0435\u043D\u043D\u044F\u043C.',noSubs:'\u0421\u043F\u043E\u0447\u0430\u0442\u043A\u0443 \u0437\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0442\u0435 \u0444\u0430\u0439\u043B \u0441\u0443\u0431\u0442\u0438\u0442\u0440\u0456\u0432.',compLoaded:'\u041F\u043E\u0440\u0456\u0432\u043D\u044F\u043B\u044C\u043D\u0443 \u0434\u043E\u0440\u0456\u0436\u043A\u0443 \u0437\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043E',resetMsg:'\u0421\u043A\u0438\u043D\u0443\u0442\u043E \u043D\u0430 \u043F\u043E\u0447\u0430\u0442\u043E\u043A'},
+    ru:{dropHere:'\u041F\u0435\u0440\u0435\u0442\u0430\u0449\u0438\u0442\u0435 \u0444\u0430\u0439\u043B \u0441\u0443\u0431\u0442\u0438\u0442\u0440\u043E\u0432 \u0441\u044E\u0434\u0430',dropFmt:'\u041F\u043E\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442 \u0444\u043E\u0440\u043C\u0430\u0442\u044B .srt, .vtt \u0438 .txt',idle:'\u041F\u0435\u0440\u0435\u0442\u0430\u0449\u0438\u0442\u0435 \u0444\u0430\u0439\u043B \u0438\u043B\u0438 \u043D\u0430\u0436\u043C\u0438\u0442\u0435 \u043A\u043D\u043E\u043F\u043A\u0443 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438',ready:'\u0413\u043E\u0442\u043E\u0432\u043E \u2014 \u043D\u0430\u0436\u043C\u0438\u0442\u0435 play \u0434\u043B\u044F \u043D\u0430\u0447\u0430\u043B\u0430',noFile:'\u0424\u0430\u0439\u043B \u043D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D',cues:'\u0441\u0442\u0440\u043E\u043A',offset:'\u0421\u043C\u0435\u0449\u0435\u043D\u0438\u0435',loaded:'\u0417\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u043E',from:'\u0438\u0437',noValid:'\u041D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0434\u043E\u043F\u0443\u0441\u0442\u0438\u043C\u044B\u0445 \u0441\u0443\u0431\u0442\u0438\u0442\u0440\u043E\u0432.',readErr:'\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u0442\u044C \u0444\u0430\u0439\u043B.',exported:'SRT \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0438\u0440\u043E\u0432\u0430\u043D \u0441\u043E \u0441\u043C\u0435\u0449\u0435\u043D\u0438\u0435\u043C.',noSubs:'\u0421\u043D\u0430\u0447\u0430\u043B\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u0435 \u0444\u0430\u0439\u043B \u0441\u0443\u0431\u0442\u0438\u0442\u0440\u043E\u0432.',compLoaded:'\u0414\u043E\u0440\u043E\u0436\u043A\u0430 \u0441\u0440\u0430\u0432\u043D\u0435\u043D\u0438\u044F \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u0430',resetMsg:'\u0421\u0431\u0440\u043E\u0448\u0435\u043D\u043E \u0432 \u043D\u0430\u0447\u0430\u043B\u043E'},
+    ar:{dropHere:'\u0627\u0633\u062D\u0628 \u0645\u0644\u0641 \u0627\u0644\u062A\u0631\u062C\u0645\u0629 \u0647\u0646\u0627',dropFmt:'\u064A\u062F\u0639\u0645 \u0635\u064A\u063A .srt \u0648 .vtt \u0648 .txt',idle:'\u0627\u0633\u062D\u0628 \u0645\u0644\u0641\u0627\u064B \u0623\u0648 \u0627\u0646\u0642\u0631 \u0639\u0644\u0649 \u0632\u0631 \u0627\u0644\u0645\u0644\u0641',ready:'\u062C\u0627\u0647\u0632 \u2014 \u0627\u0636\u063A\u0637 \u062A\u0634\u063A\u064A\u0644 \u0644\u0644\u0628\u062F\u0621',noFile:'\u0644\u0645 \u064A\u062A\u0645 \u062A\u062D\u0645\u064A\u0644 \u0645\u0644\u0641',cues:'\u0633\u0637\u0631',offset:'\u0627\u0644\u0625\u0632\u0627\u062D\u0629',loaded:'\u062A\u0645 \u0627\u0644\u062A\u062D\u0645\u064A\u0644',from:'\u0645\u0646',noValid:'\u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u0639\u062B\u0648\u0631 \u0639\u0644\u0649 \u062A\u0631\u062C\u0645\u0627\u062A \u0635\u0627\u0644\u062D\u0629.',readErr:'\u0641\u0634\u0644 \u0641\u064A \u0642\u0631\u0627\u0621\u0629 \u0627\u0644\u0645\u0644\u0641.',exported:'\u062A\u0645 \u062A\u0635\u062F\u064A\u0631 SRT \u0645\u0639 \u0627\u0644\u0625\u0632\u0627\u062D\u0629.',noSubs:'\u0642\u0645 \u0628\u062A\u062D\u0645\u064A\u0644 \u0645\u0644\u0641 \u062A\u0631\u062C\u0645\u0629 \u0623\u0648\u0644\u0627\u064B.',compLoaded:'\u062A\u0645 \u062A\u062D\u0645\u064A\u0644 \u0645\u0633\u0627\u0631 \u0627\u0644\u0645\u0642\u0627\u0631\u0646\u0629',resetMsg:'\u062A\u0645 \u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u062A\u0639\u064A\u064A\u0646 \u0625\u0644\u0649 \u0627\u0644\u0628\u062F\u0627\u064A\u0629'},
+    hi:{dropHere:'\u0905\u092A\u0928\u0940 \u0909\u092A\u0936\u0940\u0930\u094D\u0937\u0915 \u092B\u093C\u093E\u0907\u0932 \u092F\u0939\u093E\u0901 \u091B\u094B\u0921\u093C\u0947\u0902',dropFmt:'.srt, .vtt \u0914\u0930 .txt \u092A\u094D\u0930\u093E\u0930\u0942\u092A \u0938\u092E\u0930\u094D\u0925\u093F\u0924',idle:'\u092B\u093C\u093E\u0907\u0932 \u091B\u094B\u0921\u093C\u0947\u0902 \u092F\u093E \u092B\u093C\u093E\u0907\u0932 \u092C\u091F\u0928 \u0915\u094D\u0932\u093F\u0915 \u0915\u0930\u0947\u0902',ready:'\u0924\u0948\u092F\u093E\u0930 \u2014 \u0936\u0941\u0930\u0942 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u092A\u094D\u0932\u0947 \u0926\u092C\u093E\u090F\u0901',noFile:'\u0915\u094B\u0908 \u092B\u093C\u093E\u0907\u0932 \u0932\u094B\u0921 \u0928\u0939\u0940\u0902',cues:'\u092A\u0902\u0915\u094D\u0924\u093F\u092F\u093E\u0901',offset:'\u0911\u092B\u093C\u0938\u0947\u091F',loaded:'\u0932\u094B\u0921 \u0939\u0941\u0906',from:'\u0938\u0947',noValid:'\u0915\u094B\u0908 \u092E\u093E\u0928\u094D\u092F \u0909\u092A\u0936\u0940\u0930\u094D\u0937\u0915 \u0928\u0939\u0940\u0902 \u092E\u093F\u0932\u093E\u0964',readErr:'\u092B\u093C\u093E\u0907\u0932 \u092A\u0922\u093C\u0928\u0947 \u092E\u0947\u0902 \u0935\u093F\u092B\u0932\u0964',exported:'\u0911\u092B\u093C\u0938\u0947\u091F \u0932\u093E\u0917\u0942 SRT \u0928\u093F\u0930\u094D\u092F\u093E\u0924 \u0915\u093F\u092F\u093E\u0964',noSubs:'\u092A\u0939\u0932\u0947 \u0909\u092A\u0936\u0940\u0930\u094D\u0937\u0915 \u092B\u093C\u093E\u0907\u0932 \u0932\u094B\u0921 \u0915\u0930\u0947\u0902\u0964',compLoaded:'\u0924\u0941\u0932\u0928\u093E \u091F\u094D\u0930\u0948\u0915 \u0932\u094B\u0921 \u0939\u0941\u0906',resetMsg:'\u0936\u0941\u0930\u0942\u0906\u0924 \u092E\u0947\u0902 \u0930\u0940\u0938\u0947\u091F'},
+    th:{dropHere:'\u0E27\u0E32\u0E07\u0E44\u0E1F\u0E25\u0E4C\u0E04\u0E33\u0E1A\u0E23\u0E23\u0E22\u0E32\u0E22\u0E17\u0E35\u0E48\u0E19\u0E35\u0E48',dropFmt:'\u0E23\u0E2D\u0E07\u0E23\u0E31\u0E1A .srt, .vtt \u0E41\u0E25\u0E30 .txt',idle:'\u0E27\u0E32\u0E07\u0E44\u0E1F\u0E25\u0E4C\u0E2B\u0E23\u0E37\u0E2D\u0E04\u0E25\u0E34\u0E01\u0E1B\u0E38\u0E48\u0E21\u0E44\u0E1F\u0E25\u0E4C\u0E40\u0E1E\u0E37\u0E48\u0E2D\u0E40\u0E23\u0E34\u0E48\u0E21\u0E15\u0E49\u0E19',ready:'\u0E1E\u0E23\u0E49\u0E2D\u0E21 \u2014 \u0E01\u0E14\u0E40\u0E25\u0E48\u0E19\u0E40\u0E1E\u0E37\u0E48\u0E2D\u0E40\u0E23\u0E34\u0E48\u0E21',noFile:'\u0E22\u0E31\u0E07\u0E44\u0E21\u0E48\u0E21\u0E35\u0E44\u0E1F\u0E25\u0E4C',cues:'\u0E1A\u0E23\u0E23\u0E17\u0E31\u0E14',offset:'\u0E2D\u0E2D\u0E1F\u0E40\u0E0B\u0E47\u0E15',loaded:'\u0E42\u0E2B\u0E25\u0E14\u0E41\u0E25\u0E49\u0E27',from:'\u0E08\u0E32\u0E01',noValid:'\u0E44\u0E21\u0E48\u0E1E\u0E1A\u0E04\u0E33\u0E1A\u0E23\u0E23\u0E22\u0E32\u0E22\u0E17\u0E35\u0E48\u0E16\u0E39\u0E01\u0E15\u0E49\u0E2D\u0E07',readErr:'\u0E2D\u0E48\u0E32\u0E19\u0E44\u0E1F\u0E25\u0E4C\u0E25\u0E49\u0E21\u0E40\u0E2B\u0E25\u0E27',exported:'\u0E2A\u0E48\u0E07\u0E2D\u0E2D\u0E01 SRT \u0E1E\u0E23\u0E49\u0E2D\u0E21\u0E2D\u0E2D\u0E1F\u0E40\u0E0B\u0E47\u0E15\u0E41\u0E25\u0E49\u0E27',noSubs:'\u0E01\u0E23\u0E38\u0E13\u0E32\u0E42\u0E2B\u0E25\u0E14\u0E44\u0E1F\u0E25\u0E4C\u0E04\u0E33\u0E1A\u0E23\u0E23\u0E22\u0E32\u0E22\u0E01\u0E48\u0E2D\u0E19',compLoaded:'\u0E42\u0E2B\u0E25\u0E14\u0E41\u0E17\u0E23\u0E47\u0E01\u0E40\u0E1B\u0E23\u0E35\u0E22\u0E1A\u0E40\u0E17\u0E35\u0E22\u0E1A\u0E41\u0E25\u0E49\u0E27',resetMsg:'\u0E23\u0E35\u0E40\u0E0B\u0E47\u0E15\u0E44\u0E1B\u0E22\u0E31\u0E07\u0E08\u0E38\u0E14\u0E40\u0E23\u0E34\u0E48\u0E21\u0E15\u0E49\u0E19'},
+    vi:{dropHere:'Th\u1EA3 file ph\u1EE5 \u0111\u1EC1 v\u00E0o \u0111\u00E2y',dropFmt:'H\u1ED7 tr\u1EE3 \u0111\u1ECBnh d\u1EA1ng .srt, .vtt v\u00E0 .txt',idle:'Th\u1EA3 file ho\u1EB7c nh\u1EA5n n\u00FAt ch\u1ECDn file',ready:'S\u1EB5n s\u00E0ng \u2014 nh\u1EA5n play \u0111\u1EC3 b\u1EAFt \u0111\u1EA7u',noFile:'Ch\u01B0a t\u1EA3i file',cues:'d\u00F2ng',offset:'B\u00F9 tr\u1EEB',loaded:'\u0110\u00E3 t\u1EA3i',from:'t\u1EEB',noValid:'Kh\u00F4ng t\u00ECm th\u1EA5y ph\u1EE5 \u0111\u1EC1 h\u1EE3p l\u1EC7.',readErr:'\u0110\u1ECDc file th\u1EA5t b\u1EA1i.',exported:'\u0110\u00E3 xu\u1EA5t SRT v\u1EDBi b\u00F9 tr\u1EEB \u00E1p d\u1EE5ng.',noSubs:'Vui l\u00F2ng t\u1EA3i file ph\u1EE5 \u0111\u1EC1 tr\u01B0\u1EDBc.',compLoaded:'\u0110\u00E3 t\u1EA3i \u0111\u01B0\u1EDDng so s\u00E1nh',resetMsg:'\u0110\u00E3 \u0111\u1EB7t l\u1EA1i v\u1EC1 \u0111\u1EA7u'},
+    id:{dropHere:'Letakkan file subtitle di sini',dropFmt:'Mendukung format .srt, .vtt, dan .txt',idle:'Letakkan file atau klik tombol file',ready:'Siap \u2014 tekan play untuk mulai',noFile:'Belum ada file',cues:'baris',offset:'Offset',loaded:'Dimuat',from:'dari',noValid:'Tidak ditemukan subtitle yang valid.',readErr:'Gagal membaca file.',exported:'SRT diekspor dengan offset diterapkan.',noSubs:'Muat file subtitle terlebih dahulu.',compLoaded:'Trek perbandingan dimuat',resetMsg:'Direset ke awal'},
+    zh:{dropHere:'\u5C06\u5B57\u5E55\u6587\u4EF6\u62D6\u653E\u5230\u6B64\u5904',dropFmt:'\u652F\u6301 .srt\u3001.vtt \u548C .txt \u683C\u5F0F',idle:'\u62D6\u653E\u6587\u4EF6\u6216\u70B9\u51FB\u6587\u4EF6\u6309\u94AE\u5F00\u59CB',ready:'\u5C31\u7EEA \u2014 \u6309\u64AD\u653E\u5F00\u59CB',noFile:'\u672A\u52A0\u8F7D\u6587\u4EF6',cues:'\u6761\u5B57\u5E55',offset:'\u504F\u79FB',loaded:'\u5DF2\u52A0\u8F7D',from:'\u6765\u81EA',noValid:'\u672A\u627E\u5230\u6709\u6548\u5B57\u5E55\u3002',readErr:'\u6587\u4EF6\u8BFB\u53D6\u5931\u8D25\u3002',exported:'\u5DF2\u5BFC\u51FA\u5E26\u504F\u79FB\u7684SRT\u6587\u4EF6\u3002',noSubs:'\u8BF7\u5148\u52A0\u8F7D\u5B57\u5E55\u6587\u4EF6\u3002',compLoaded:'\u5BF9\u6BD4\u8F68\u9053\u5DF2\u52A0\u8F7D',resetMsg:'\u5DF2\u91CD\u7F6E\u5230\u5F00\u5934'},
+    ja:{dropHere:'\u5B57\u5E55\u30D5\u30A1\u30A4\u30EB\u3092\u3053\u3053\u306B\u30C9\u30ED\u30C3\u30D7',dropFmt:'.srt\u3001.vtt\u3001.txt\u5F62\u5F0F\u306B\u5BFE\u5FDC',idle:'\u30D5\u30A1\u30A4\u30EB\u3092\u30C9\u30ED\u30C3\u30D7\u3059\u308B\u304B\u30D5\u30A1\u30A4\u30EB\u30DC\u30BF\u30F3\u3092\u30AF\u30EA\u30C3\u30AF',ready:'\u6E96\u5099\u5B8C\u4E86 \u2014 \u518D\u751F\u3092\u62BC\u3057\u3066\u958B\u59CB',noFile:'\u30D5\u30A1\u30A4\u30EB\u672A\u8AAD\u307F\u8FBC\u307F',cues:'\u4EF6',offset:'\u30AA\u30D5\u30BB\u30C3\u30C8',loaded:'\u8AAD\u307F\u8FBC\u307F\u5B8C\u4E86',from:'\u304B\u3089',noValid:'\u6709\u52B9\u306A\u5B57\u5E55\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3067\u3057\u305F\u3002',readErr:'\u30D5\u30A1\u30A4\u30EB\u306E\u8AAD\u307F\u8FBC\u307F\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002',exported:'\u30AA\u30D5\u30BB\u30C3\u30C8\u9069\u7528\u6E08\u307FSRT\u3092\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u3057\u307E\u3057\u305F\u3002',noSubs:'\u5148\u306B\u5B57\u5E55\u30D5\u30A1\u30A4\u30EB\u3092\u8AAD\u307F\u8FBC\u3093\u3067\u304F\u3060\u3055\u3044\u3002',compLoaded:'\u6BD4\u8F03\u30C8\u30E9\u30C3\u30AF\u3092\u8AAD\u307F\u8FBC\u307F\u307E\u3057\u305F',resetMsg:'\u6700\u521D\u306B\u30EA\u30BB\u30C3\u30C8\u3057\u307E\u3057\u305F'},
+    ko:{dropHere:'\uC790\uB9C9 \uD30C\uC77C\uC744 \uC5EC\uAE30\uC5D0 \uB4DC\uB86D\uD558\uC138\uC694',dropFmt:'.srt, .vtt, .txt \uD615\uC2DD \uC9C0\uC6D0',idle:'\uD30C\uC77C\uC744 \uB4DC\uB86D\uD558\uAC70\uB098 \uD30C\uC77C \uBC84\uD2BC\uC744 \uD074\uB9AD\uD558\uC138\uC694',ready:'\uC900\uBE44 \uC644\uB8CC \u2014 \uC7AC\uC0DD \uBC84\uD2BC\uC744 \uB204\uB974\uC138\uC694',noFile:'\uB85C\uB4DC\uB41C \uD30C\uC77C \uC5C6\uC74C',cues:'\uC790\uB9C9',offset:'\uC624\uD504\uC14B',loaded:'\uB85C\uB4DC\uB428',from:'\uC5D0\uC11C',noValid:'\uC720\uD6A8\uD55C \uC790\uB9C9\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.',readErr:'\uD30C\uC77C \uC77D\uAE30\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.',exported:'\uC624\uD504\uC14B\uC774 \uC801\uC6A9\uB41C SRT\uB97C \uB0B4\uBCF4\uB0C8\uC2B5\uB2C8\uB2E4.',noSubs:'\uBA3C\uC800 \uC790\uB9C9 \uD30C\uC77C\uC744 \uB85C\uB4DC\uD558\uC138\uC694.',compLoaded:'\uBE44\uAD50 \uD2B8\uB799\uC774 \uB85C\uB4DC\uB428',resetMsg:'\uCC98\uC74C\uC73C\uB85C \uB9AC\uC14B\uB428'},
   };
-  reader.readAsText(file, 'utf-8');
-  e.target.value = ''; // aynı dosya seçildiğinde tekrar tetiklensin
-});
+  static t(k) { return (Lang.data[Lang.current] || Lang.data.en)[k] || k; }
+  static set(code) {
+    Lang.current = code;
+    Storage.set('lang', code);
+    document.documentElement.dir = code === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = code;
+  }
+}
 
-// --- Kontroller ---
-document.getElementById('play').addEventListener('click', play);
-document.getElementById('pause').addEventListener('click', pause);
-document.getElementById('reset').addEventListener('click', ()=>{ reset(); offsetMs = 0; offsetInfo.textContent = `Ofset: ${offsetMs} ms`; });
+// ── SRT / WebVTT Parser ─────────────────────────────────────────
 
-document.getElementById('fontSize').addEventListener('input', (e)=>{
-  const val = Number(e.target.value);
-  subtitleEl.style.fontSize = val + 'px';
-});
+class SRTParser {
+  static parse(raw) {
+    let text = raw.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').trim();
+    if (text.startsWith('WEBVTT')) text = text.replace(/^WEBVTT[^\n]*\n+/, '');
+    return SRTParser.parseBlocks(text);
+  }
 
-// Tam ekran: body hedef + vendor fallback
-function toggleFullscreen(){
-  const el = document.body; // mobilde body daha uyumlu
-  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-    const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
-    if (req) {
-      try {
-        const p = req.call(el);
-        if (p && typeof p.then === 'function') { p.catch(()=>{}); }
-      } catch(_) {}
+  static parseBlocks(text) {
+    const blocks = text.split(/\n\n+/);
+    const cues = [];
+    for (const block of blocks) {
+      const lines = block.trim().split('\n');
+      if (lines.length < 2) continue;
+      let tl = -1;
+      for (let i = 0; i < Math.min(lines.length, 3); i++) {
+        if (lines[i].includes('-->')) { tl = i; break; }
+      }
+      if (tl === -1) continue;
+      const m = lines[tl].match(
+        /(?:(\d{1,2}):)?(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(?:(\d{1,2}):)?(\d{2}):(\d{2})[,.](\d{3})/
+      );
+      if (!m) continue;
+      const start = SRTParser.toMs(m[1]||'0', m[2], m[3], m[4]);
+      const end   = SRTParser.toMs(m[5]||'0', m[6], m[7], m[8]);
+      const body  = lines.slice(tl + 1).join('\n').trim();
+      if (!body) continue;
+      cues.push({ start, end, text: body });
     }
-  } else {
-    const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
-    exit && exit.call(document);
+    cues.sort((a, b) => a.start - b.start);
+    return cues;
+  }
+
+  static toMs(h, m, s, ms) { return (+h)*3600000 + (+m)*60000 + (+s)*1000 + (+ms); }
+
+  static sanitize(text) {
+    let s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    s = s.replace(/&lt;(\/?)(b|i|u|em|strong)&gt;/gi, '<$1$2>');
+    return s.replace(/\n/g, '<br>');
   }
 }
-document.getElementById('fs').addEventListener('click', toggleFullscreen);
 
-// Ofset ayarlama
-function adjustOffset(delta){
-  offsetMs += delta;
-  offsetInfo.textContent = `Ofset: ${offsetMs} ms`;
-  renderSubtitle(currentTimeMs());
+// ── Storage ─────────────────────────────────────────────────────
+
+class Storage {
+  static get(k, fb) { try { const r = localStorage.getItem('syncsubs_'+k); return r !== null ? JSON.parse(r) : fb; } catch { return fb; } }
+  static set(k, v)  { try { localStorage.setItem('syncsubs_'+k, JSON.stringify(v)); } catch {} }
 }
-// Alt paneldeki tüm step butonlarına tek dinleyici
-bottomPanel.addEventListener('click', (e)=>{
-  const btn = e.target.closest('[data-step]');
-  if (!btn) return;
-  const delta = parseInt(btn.getAttribute('data-step'), 10);
-  if (Number.isFinite(delta)) adjustOffset(delta);
-});
 
-// Panel gizle/göster ve body padding ayarı
-function setPanelVisible(visible){
-  if (visible){
-    bottomPanel.classList.remove('hidden');
-    document.body.style.paddingBottom = `calc(var(--panel-h) + env(safe-area-inset-bottom, 0px))`;
-    togglePanelBtn.textContent = '⚙️';
-    togglePanelBtn.title = 'Ofset panelini gizle';
-  } else {
-    bottomPanel.classList.add('hidden');
-    document.body.style.paddingBottom = '0px';
-    togglePanelBtn.textContent = '⚙️';
-    togglePanelBtn.title = 'Ofset panelini göster';
+// ── Toast ───────────────────────────────────────────────────────
+
+class Toast {
+  static container = document.getElementById('toasts');
+  static icons = { success: Icons.check, error: Icons.error, warning: Icons.warning, info: Icons.info };
+  static show(msg, type='info', dur=4000) {
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    el.innerHTML = `${Toast.icons[type]||Toast.icons.info}<p>${msg}</p>`;
+    Toast.container.appendChild(el);
+    const dismiss = () => { el.classList.add('removing'); el.addEventListener('animationend', () => el.remove(), {once:true}); };
+    if (dur > 0) setTimeout(dismiss, dur);
+    el.addEventListener('click', dismiss);
   }
 }
-let panelVisible = true;
-setPanelVisible(panelVisible);
 
-togglePanelBtn.addEventListener('click', ()=>{
-  panelVisible = !panelVisible;
-  setPanelVisible(panelVisible);
-});
+// ── Player ──────────────────────────────────────────────────────
 
-// Kısayollar (harici klavye): Space=başlat/duraklat, F=tam ekran, R=sıfırla, ,/. = +/-1s
-window.addEventListener('keydown', (e)=>{
-  const k = e.key.toLowerCase();
-  if (e.code === 'Space'){
-    e.preventDefault();
-    playing ? pause() : play();
-  } else if (k === 'f'){
-    toggleFullscreen();
-  } else if (k === 'r'){
-    reset(); offsetMs = 0; offsetInfo.textContent = `Ofset: ${offsetMs} ms`;
-  } else if (k === ','){ // -1s
-    adjustOffset(-1000);
-  } else if (k === '.'){ // +1s
-    adjustOffset(1000);
+class Player {
+  constructor() {
+    this.subtitles = []; this.playing = false; this.startEpoch = 0;
+    this.pausedAt = 0; this.offset = 0; this.cueIndex = 0; this.totalDuration = 0;
+    this.altSubs = []; this.altIndex = 0;
   }
-});
+
+  get elapsed()      { return this.playing ? Date.now() - this.startEpoch + this.pausedAt : this.pausedAt; }
+  get adjustedTime() { return this.elapsed + this.offset; }
+  get progress()     { return this.totalDuration <= 0 ? 0 : Math.max(0, Math.min(1, this.adjustedTime / this.totalDuration)); }
+
+  load(cues) { this.subtitles = cues; this.totalDuration = cues.length ? cues[cues.length-1].end : 0; this.reset(); }
+  loadAlt(cues) { this.altSubs = cues; this.altIndex = 0; }
+
+  play()  { if (!this.subtitles.length || this.playing) return false; this.startEpoch = Date.now(); this.playing = true; return true; }
+  pause() { if (!this.playing) return false; this.pausedAt += Date.now() - this.startEpoch; this.playing = false; return true; }
+  togglePlayPause() { return this.playing ? this.pause() : this.play(); }
+  reset()     { this.playing = false; this.startEpoch = 0; this.pausedAt = 0; this.cueIndex = 0; this.altIndex = 0; }
+  fullReset() { this.reset(); this.offset = 0; }
+  seekTo(ms)  { this.pausedAt = Math.max(0, ms); if (this.playing) this.startEpoch = Date.now(); this.cueIndex = 0; this.altIndex = 0; }
+  adjustOffset(d) { this.offset += d; }
+
+  getCue(subs, idxProp) {
+    if (!subs.length) return null;
+    const t = this.adjustedTime;
+    while (this[idxProp] > 0 && t < subs[this[idxProp]].start) this[idxProp]--;
+    while (this[idxProp] < subs.length - 1 && t >= subs[this[idxProp]].end) this[idxProp]++;
+    const c = subs[this[idxProp]];
+    return (t >= c.start && t < c.end) ? c : null;
+  }
+  getCurrentCue() { return this.getCue(this.subtitles, 'cueIndex'); }
+  getAltCue()     { return this.getCue(this.altSubs, 'altIndex'); }
+
+  exportSRT() {
+    if (!this.subtitles.length) return null;
+    return this.subtitles.map((c, i) => {
+      const s = Player.srtTimestamp(Math.max(0, c.start + this.offset));
+      const e = Player.srtTimestamp(Math.max(0, c.end + this.offset));
+      return `${i+1}\n${s} --> ${e}\n${c.text}`;
+    }).join('\n\n') + '\n';
+  }
+
+  static srtTimestamp(ms) {
+    ms = Math.round(Math.abs(ms));
+    const h = String(Math.floor(ms/3600000)).padStart(2,'0');
+    const m = String(Math.floor((ms%3600000)/60000)).padStart(2,'0');
+    const s = String(Math.floor((ms%60000)/1000)).padStart(2,'0');
+    const l = String(ms%1000).padStart(3,'0');
+    return `${h}:${m}:${s},${l}`;
+  }
+
+  static formatTime(ms) {
+    const neg = ms < 0; ms = Math.abs(Math.round(ms));
+    const h = Math.floor(ms/3600000);
+    const mm = String(Math.floor((ms%3600000)/60000)).padStart(2,'0');
+    const ss = String(Math.floor((ms%60000)/1000)).padStart(2,'0');
+    const ml = String(ms%1000).padStart(3,'0');
+    return (neg?'\u2212':'') + (h > 0 ? `${h}:` : '') + `${mm}:${ss}.${ml}`;
+  }
+}
+
+// ── UI ──────────────────────────────────────────────────────────
+
+class UI {
+  constructor(player) {
+    this.player = player;
+    this.rafId = null; this.lastCue = undefined; this.lastAlt = undefined; this.dragCounter = 0;
+
+    this.el = {};
+    ['fileBtn','fileInput','compareBtn','compareInput','playPauseBtn','resetBtn','exportBtn',
+     'searchWrap','searchBtn','searchInput','searchResults','langBtn','langWrap','langPanel','themeBtn',
+     'fontRange','fontLabel','fullscreenBtn','subtitle','subtitle2',
+     'timeline','timelineFill','fileInfo','timeDisplay','countDisplay','offsetDisplay',
+     'offsetPanel','fab','dropZone','dropText','dropFormats'].forEach(id => {
+      this.el[id] = document.getElementById(id);
+    });
+
+    this.restore();
+    this.bind();
+  }
+
+  restore() {
+    const fs = Storage.get('fontSize', 36);
+    this.el.fontRange.value = fs; this.el.fontLabel.textContent = fs;
+    this.el.subtitle.style.fontSize = fs + 'px';
+    this.setPanelVisible(Storage.get('panelVisible', true));
+
+    const savedLang = Storage.get('lang', 'en');
+    Lang.set(savedLang);
+    this.buildLangPanel();
+    this.applyLang();
+
+    if (Storage.get('theme', 'dark') === 'light') this.setTheme(true);
+  }
+
+  applyLang() {
+    const t = Lang.t.bind(Lang);
+    this.el.dropText.textContent = t('dropHere');
+    this.el.dropFormats.textContent = t('dropFmt');
+    if (!this.player.subtitles.length) {
+      this.el.fileInfo.textContent = t('noFile');
+      this.el.subtitle.textContent = t('idle');
+    }
+  }
+
+  bind() {
+    this.el.fileBtn.addEventListener('click', () => this.el.fileInput.click());
+    this.el.fileInput.addEventListener('change', e => { if (e.target.files?.[0]) this.loadFile(e.target.files[0]); e.target.value = ''; });
+
+    this.el.compareBtn.addEventListener('click', () => this.el.compareInput.click());
+    this.el.compareInput.addEventListener('change', e => { if (e.target.files?.[0]) this.loadCompare(e.target.files[0]); e.target.value = ''; });
+
+    this.el.playPauseBtn.addEventListener('click', () => this.togglePlayPause());
+    this.el.resetBtn.addEventListener('click', () => this.handleReset());
+    this.el.exportBtn.addEventListener('click', () => this.handleExport());
+
+    this.el.searchBtn.addEventListener('click', () => this.toggleSearch());
+    this.el.searchInput.addEventListener('input', e => this.handleSearch(e.target.value));
+    this.el.searchResults.addEventListener('click', e => {
+      const item = e.target.closest('.search-item');
+      if (!item) return;
+      this.player.seekTo(+item.dataset.time - this.player.offset);
+      this.renderOnce(); this.closeSearch();
+    });
+
+    this.el.langBtn.addEventListener('click', e => { e.stopPropagation(); this.toggleLangPanel(); });
+    this.el.langPanel.addEventListener('click', e => {
+      const item = e.target.closest('.lang-item'); if (!item) return;
+      this.selectLang(item.dataset.code);
+    });
+    document.addEventListener('click', e => { if (!this.el.langWrap.contains(e.target)) this.closeLangPanel(); });
+    this.el.themeBtn.addEventListener('click', () => this.setTheme(!document.body.classList.contains('light-theme')));
+
+    this.el.fontRange.addEventListener('input', e => {
+      const s = +e.target.value; this.el.fontLabel.textContent = s;
+      this.el.subtitle.style.fontSize = s + 'px'; Storage.set('fontSize', s);
+    });
+
+    this.el.fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
+    document.addEventListener('fullscreenchange', () => this.syncFsIcon());
+    document.addEventListener('webkitfullscreenchange', () => this.syncFsIcon());
+
+    this.el.fab.addEventListener('click', () => this.togglePanel());
+    this.el.offsetPanel.addEventListener('click', e => {
+      const b = e.target.closest('[data-step]'); if (!b) return;
+      const d = parseInt(b.dataset.step, 10); if (!Number.isFinite(d)) return;
+      this.player.adjustOffset(d); this.syncOffset(); this.renderOnce();
+    });
+
+    this.bindTimeline(); this.bindDragDrop(); this.bindKeyboard();
+  }
+
+  loadFile(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const cues = SRTParser.parse(reader.result);
+      if (!cues.length) { Toast.show(Lang.t('noValid'), 'error'); return; }
+      this.player.load(cues);
+      this.el.fileInfo.textContent = file.name;
+      this.el.countDisplay.textContent = cues.length + ' ' + Lang.t('cues');
+      this.syncOffset(); this.showReady();
+      Toast.show(`${Lang.t('loaded')} ${cues.length} ${Lang.t('cues')} ${Lang.t('from')} ${file.name}`, 'success');
+    };
+    reader.onerror = () => Toast.show(Lang.t('readErr'), 'error');
+    reader.readAsText(file, 'utf-8');
+  }
+
+  loadCompare(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const cues = SRTParser.parse(reader.result);
+      if (!cues.length) { Toast.show(Lang.t('noValid'), 'error'); return; }
+      this.player.loadAlt(cues);
+      Toast.show(`${Lang.t('compLoaded')}: ${cues.length} ${Lang.t('cues')}`, 'success');
+    };
+    reader.onerror = () => Toast.show(Lang.t('readErr'), 'error');
+    reader.readAsText(file, 'utf-8');
+  }
+
+  showReady() {
+    this.el.subtitle.className = 'subtitle placeholder';
+    this.el.subtitle.textContent = Lang.t('ready');
+    this.el.timeDisplay.textContent = '00:00.000';
+    this.el.timelineFill.style.width = '0%';
+    this.lastCue = undefined; this.lastAlt = undefined;
+  }
+
+  togglePlayPause() {
+    if (this.player.playing) { this.player.pause(); this.stopLoop(); }
+    else { if (this.player.play()) this.startLoop(); }
+    this.syncPlayBtn();
+  }
+
+  handleReset() {
+    this.stopLoop(); this.player.fullReset(); this.syncPlayBtn(); this.syncOffset();
+    if (this.player.subtitles.length) this.showReady();
+    else { this.el.subtitle.className = 'subtitle placeholder'; this.el.subtitle.textContent = Lang.t('idle'); }
+    this.el.timeDisplay.textContent = '00:00.000'; this.el.timelineFill.style.width = '0%';
+    this.el.subtitle2.innerHTML = ''; this.el.subtitle2.classList.add('empty');
+  }
+
+  handleExport() {
+    const srt = this.player.exportSRT();
+    if (!srt) { Toast.show(Lang.t('noSubs'), 'warning'); return; }
+    const blob = new Blob([srt], { type: 'text/srt;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'synced_subtitles.srt'; a.click();
+    URL.revokeObjectURL(url);
+    Toast.show(Lang.t('exported'), 'success');
+  }
+
+  syncPlayBtn() {
+    const b = this.el.playPauseBtn;
+    if (this.player.playing) { b.innerHTML = Icons.pause; b.setAttribute('aria-label','Pause'); b.title = 'Pause (Space)'; }
+    else { b.innerHTML = Icons.play; b.setAttribute('aria-label','Play'); b.title = 'Play (Space)'; }
+  }
+
+  startLoop() {
+    this.el.subtitle.classList.remove('placeholder');
+    const tick = () => { this.render(); this.rafId = requestAnimationFrame(tick); };
+    this.rafId = requestAnimationFrame(tick);
+  }
+  stopLoop() { if (this.rafId !== null) { cancelAnimationFrame(this.rafId); this.rafId = null; } }
+
+  render() {
+    const cue = this.player.getCurrentCue();
+    if (cue !== this.lastCue) {
+      this.lastCue = cue;
+      const el = this.el.subtitle;
+      if (cue) { el.innerHTML = SRTParser.sanitize(cue.text); el.classList.remove('empty','cue-enter'); void el.offsetWidth; el.classList.add('cue-enter'); }
+      else { el.innerHTML = ''; el.classList.add('empty'); }
+    }
+    if (this.player.altSubs.length) {
+      const alt = this.player.getAltCue();
+      if (alt !== this.lastAlt) {
+        this.lastAlt = alt;
+        const el2 = this.el.subtitle2;
+        if (alt) { el2.innerHTML = SRTParser.sanitize(alt.text); el2.classList.remove('empty','cue-enter'); void el2.offsetWidth; el2.classList.add('cue-enter'); }
+        else { el2.innerHTML = ''; el2.classList.add('empty'); }
+      }
+    }
+    this.el.timeDisplay.textContent = Player.formatTime(this.player.adjustedTime);
+    this.el.timelineFill.style.width = (this.player.progress * 100).toFixed(2) + '%';
+  }
+
+  renderOnce() { if (!this.player.playing) this.render(); }
+
+  toggleSearch() {
+    const w = this.el.searchWrap;
+    if (w.classList.toggle('open')) { this.el.searchInput.focus(); }
+    else this.closeSearch();
+  }
+  closeSearch() {
+    this.el.searchWrap.classList.remove('open');
+    this.el.searchInput.value = '';
+    this.el.searchResults.classList.remove('active');
+  }
+  handleSearch(q) {
+    if (q.length < 2) { this.el.searchResults.classList.remove('active'); return; }
+    const matches = this.player.subtitles.filter(c => c.text.toLowerCase().includes(q.toLowerCase()));
+    if (!matches.length) { this.el.searchResults.classList.remove('active'); return; }
+    const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(${esc})`, 'gi');
+    this.el.searchResults.innerHTML = matches.slice(0, 25).map(c => {
+      const txt = c.text.replace(/\n/g, ' ').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(re, '<mark>$1</mark>');
+      return `<div class="search-item" data-time="${c.start}"><span class="search-time">${Player.formatTime(c.start)}</span><span class="search-text">${txt}</span></div>`;
+    }).join('');
+    this.el.searchResults.classList.add('active');
+  }
+
+  buildLangPanel() {
+    this.el.langPanel.innerHTML = Lang.list.map(l =>
+      `<div class="lang-item${l.code === Lang.current ? ' selected' : ''}" data-code="${l.code}" role="option">${l.flag} ${l.name}</div>`
+    ).join('');
+  }
+  toggleLangPanel() { this.el.langPanel.classList.toggle('active'); }
+  closeLangPanel() { this.el.langPanel.classList.remove('active'); }
+  selectLang(code) {
+    Lang.set(code);
+    this.applyLang();
+    this.buildLangPanel();
+    this.closeLangPanel();
+    const chosen = Lang.list.find(l => l.code === code);
+    Toast.show(`${chosen ? chosen.flag + ' ' + chosen.name : code}`, 'info', 2000);
+  }
+
+  setTheme(light) {
+    document.body.classList.toggle('light-theme', light);
+    this.el.themeBtn.innerHTML = light ? Icons.moon : Icons.sun;
+    document.querySelector('meta[name="theme-color"]').content = light ? '#f1f5f9' : '#07070e';
+    Storage.set('theme', light ? 'light' : 'dark');
+  }
+
+  bindTimeline() {
+    const tl = this.el.timeline; let dragging = false;
+    const seek = (x) => { const r = tl.getBoundingClientRect(); const ratio = Math.max(0,Math.min(1,(x-r.left)/r.width)); this.player.seekTo(ratio * this.player.totalDuration - this.player.offset); this.render(); };
+    tl.addEventListener('mousedown', e => { dragging = true; tl.classList.add('dragging'); seek(e.clientX); });
+    window.addEventListener('mousemove', e => { if (dragging) seek(e.clientX); });
+    window.addEventListener('mouseup', () => { if (dragging) { dragging = false; tl.classList.remove('dragging'); } });
+    tl.addEventListener('touchstart', e => { dragging = true; tl.classList.add('dragging'); seek(e.touches[0].clientX); }, {passive:true});
+    tl.addEventListener('touchmove', e => { if (dragging) seek(e.touches[0].clientX); }, {passive:true});
+    tl.addEventListener('touchend', () => { dragging = false; tl.classList.remove('dragging'); }, {passive:true});
+  }
+
+  bindDragDrop() {
+    const dz = this.el.dropZone;
+    document.addEventListener('dragenter', e => { e.preventDefault(); this.dragCounter++; if (this.dragCounter===1) dz.classList.add('active'); });
+    document.addEventListener('dragover', e => e.preventDefault());
+    document.addEventListener('dragleave', e => { e.preventDefault(); this.dragCounter--; if (this.dragCounter<=0){this.dragCounter=0;dz.classList.remove('active');} });
+    document.addEventListener('drop', e => { e.preventDefault(); this.dragCounter=0; dz.classList.remove('active'); const f=e.dataTransfer?.files[0]; if(f) this.loadFile(f); });
+  }
+
+  bindKeyboard() {
+    window.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT' && e.target.type === 'text') {
+        if (e.code === 'Escape') this.closeSearch();
+        return;
+      }
+      switch (e.code) {
+        case 'Space': e.preventDefault(); this.togglePlayPause(); break;
+        case 'KeyF': this.toggleFullscreen(); break;
+        case 'KeyR': this.handleReset(); Toast.show(Lang.t('resetMsg'),'info',2000); break;
+        case 'ArrowLeft': case 'Comma': e.preventDefault(); this.player.adjustOffset(-1000); this.syncOffset(); this.renderOnce(); break;
+        case 'ArrowRight': case 'Period': e.preventDefault(); this.player.adjustOffset(1000); this.syncOffset(); this.renderOnce(); break;
+        case 'ArrowUp': e.preventDefault(); this.changeFontSize(2); break;
+        case 'ArrowDown': e.preventDefault(); this.changeFontSize(-2); break;
+        case 'Slash': e.preventDefault(); this.toggleSearch(); break;
+        case 'KeyP': this.togglePanel(); break;
+        case 'Escape': if (!document.fullscreenElement && !document.webkitFullscreenElement) this.togglePanel(); break;
+      }
+    });
+  }
+
+  toggleFullscreen() {
+    const r = document.documentElement;
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      const req = r.requestFullscreen || r.webkitRequestFullscreen;
+      if (req) { try { req.call(r)?.catch?.(() => {}); } catch {} }
+    } else { const exit = document.exitFullscreen || document.webkitExitFullscreen; if (exit) exit.call(document); }
+  }
+  syncFsIcon() {
+    const fs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    this.el.fullscreenBtn.innerHTML = fs ? Icons.minimize : Icons.maximize;
+  }
+
+  togglePanel() { this.setPanelVisible(this.el.offsetPanel.classList.contains('hidden')); }
+  setPanelVisible(show) {
+    this.el.offsetPanel.classList.toggle('hidden', !show);
+    this.el.fab.setAttribute('aria-expanded', String(show));
+    document.body.classList.toggle('panel-hidden', !show);
+    Storage.set('panelVisible', show);
+  }
+
+  syncOffset() { const ms = this.player.offset; this.el.offsetDisplay.textContent = `${Lang.t('offset')}: ${ms>0?'+':''}${ms}ms`; }
+  changeFontSize(d) {
+    const r = this.el.fontRange; const v = Math.max(+r.min, Math.min(+r.max, +r.value + d));
+    r.value = v; this.el.fontLabel.textContent = v; this.el.subtitle.style.fontSize = v+'px'; Storage.set('fontSize', v);
+  }
+}
+
+// ── Bootstrap ───────────────────────────────────────────────────
+
+class App {
+  constructor() { this.player = new Player(); this.ui = new UI(this.player); this.registerSW(); }
+  registerSW() { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+}
+new App();
 </script>
 </body>
 </html>
